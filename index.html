@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Classical Chinese Sentence Finder</title>
+<style>
+    /*make two-column tables look good*/
+    table {
+        border-collapse: collapse;
+    }
+    td, th {
+        border: 1px solid black;
+        padding: 5px;
+        width:500px;
+    }
+    .chinese {
+        width: 200px;
+    }
+    .english {
+        width: 400px;
+    }
+    th {
+        text-align: left;
+    }
+
+</style>
+</head>
+<body>
+    This tool scours a database of parallel passages from <a href="https://ctext.org/">ctext.org</a> for parallel Classical Chinese-English passages consisting of only the characters you mentioned.
+    <p>
+    Paste all the chinese characters you know into the box below:<br>
+    
+    <textarea id="text" rows="10" cols="50">一上不世中之乍乎也予事云井亦人仁今以任休低何俄保信儀充光入全公共其冶出分利則前力勝勞勿化去參受可名君吾周哉唯問善喻四固在地士外多夢大天夫好如妻始姓威子孔字孟學孺安容富實將對山己已床弘弟强後得從循德心必忍志忠思性怵恆恕惕惠惡惻愛我所政故文於施既日明昔是景曰書曾月有望木本栩梁楹樂樊欲止此死毅母水汝海濠為無然父物理生用由疑皆盡相矣知章端粟終絏縲罕罪習者而聞胡能臣臥自至與舉苟若莊萬蘧處蝶行見覺言誨請諸謂識貢貧貫貴賜賤足身軻輿辭近遊道遠適遲鄉醉重長門隱雖霜非頭頹食體魚鯈齊</textarea><br>
+    <button id="button">Loading datasets...</button>
+    <p></p>
+    <span id="output"></span>
+    <script>
+
+        var button = document.getElementById("button");
+        //disable button until json is loaded
+        button.disabled = true;
+
+        var database={};
+        //load database.json
+        var request = new XMLHttpRequest();
+        request.open('GET', 'cache/database.json', true);
+        request.onload = function() {
+            if (request.status >= 200 && request.status < 400) {
+                // Success!
+                database = JSON.parse(request.responseText);
+                //enable button
+                button.disabled = false;
+                button.innerText = "Find passages using your characters!";
+            }
+        };  
+        request.send();
+        
+
+        //set button event
+        document.getElementById("button").addEventListener("click", function() {
+            var known_characters = document.getElementById("text").value;
+            //add chinese punctuation to known characters
+            known_characters += "、．，…。？！；：…「」『』（）〔〕【】《》〈〉﹏﹑﹔﹕﹖﹗﹙﹚﹛﹜﹝﹞ \t\n";
+
+            //remove duplicate characters and convert to array
+            known_characters = known_characters.split("").filter(function(item, pos, self) {
+                return self.indexOf(item) == pos;
+            });
+
+            var results=[];
+            //for each entry in databae, if all characters in its key are in known_characters, add to results
+            for (var key in database) {
+                var all_known = true;
+                for (var i = 0; i < key.length; i++) {
+                    if (known_characters.indexOf(key[i]) == -1) {
+                        all_known = false;
+                        break;
+                    }
+                }
+                if (all_known) {
+                    results.push(key);
+                }
+            }
+
+            //sort results by length
+            results.sort(function(a, b) {
+                return a.length - b.length;
+            });
+
+            output = "<table><tr><th class='chinese'>Chinese</th><th class='english'>English</th></tr>\n";
+            //for each result, add a row to the table
+            for (var i = 0; i < results.length; i++) {
+                output += "<tr><td class='chinese'>" + results[i] + "</td><td class='english'>" + database[results[i]][0] + "</td></tr>\n";
+            }
+            output += "</table>";            
+
+            document.getElementById("output").innerHTML = output;
+        });
+    </script>
+</body>
+</html>
