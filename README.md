@@ -6,6 +6,6 @@ If you want to find some translated Classical Chinese/English passages that use 
 
 Just go here: https://faciens.github.io/classical-chinese-passage-finder/
 
-Paste in all the characters you know, and it will search a corpus for passages that use only those characters.
+Paste in all the characters you know, and it will search a corpus for passages that use only those characters and display them for you in a table.
 
 If you want to know more context, you can search for the passages/translations on ctext https://ctext.org/ :)
