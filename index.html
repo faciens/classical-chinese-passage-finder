@@ -44,7 +44,7 @@
         var database={};
         //load database.json
         var request = new XMLHttpRequest();
-        request.open('GET', 'cache/database.json', true);
+        request.open('GET', 'database.json', true);
         request.onload = function() {
             if (request.status >= 200 && request.status < 400) {
                 // Success!
