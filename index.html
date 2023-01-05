@@ -16,6 +16,9 @@
     .chinese {
         width: 250px;
     }
+    .unknown {
+        color:red;
+    }
     .english {
         width: 400px;
     }
@@ -26,6 +29,23 @@
     th {
         text-align: left;
     }
+/* expert span has a rounded border */
+.expert {
+    border: 1px solid black;
+    border-radius: 5px;
+    padding: 5px;
+    margin: 5px;
+    width:500px;
+}
+/* hrs inside span go from left to right without border */
+.expert hr {
+    margin-left: 0;
+    margin-right: 0;
+    padding-left: 0;
+    padding-right: 0;
+    border: 0;
+    border-top: 1px solid black;
+}
 
 </style>
 </head>
@@ -35,14 +55,18 @@
     Paste all the chinese characters you know into the box below:<br>
     
     <textarea id="text" rows="10" cols="50">一上不世中之乍乎也予事云井亦人仁今以任休低何俄保信儀充光入全公共其冶出分利則前力勝勞勿化去參受可名君吾周哉唯問善喻四固在地士外多夢大天夫好如妻始姓威子孔字孟學孺安容富實將對山己已床弘弟强後得從循德心必忍志忠思性怵恆恕惕惠惡惻愛我所政故文於施既日明昔是景曰書曾月有望木本栩梁楹樂樊欲止此死毅母水汝海濠為無然父物理生用由疑皆盡相矣知章端粟終絏縲罕罪習者而聞胡能臣臥自至與舉苟若莊萬蘧處蝶行見覺言誨請諸謂識貢貧貫貴賜賤足身軻輿辭近遊道遠適遲鄉醉重長門隱雖霜非頭頹食體魚鯈齊</textarea><br>
-    <span style="display:none">
+    <!-- expert mode checkbox-->
+    <input type="checkbox" id="expert_mode">expert options<br>    
+    <div class="expert" style="display:none">
     <!-- radio button group -->
-    <input type="radio" name="grouping" value="vocab" checked>Find Sentences consisting of only these chinese characters (for vocabulary-based sentence lists)<br>
-    <input type="radio" name="grouping" value="colocation">Find Sentences containing all of these chinese characters (for colocations)<br>
-    </span>
+    <input type="radio" name="grouping" value="vocab" checked>Find Sentences consisting of only these chinese characters (for vocabulary-based sentence lists).<br>
+    <input type="radio" name="grouping" value="colocation">Find Sentences containing all of these chinese characters (for colocations).<br>
+    <hr>
+    <input type="number" id="unknown_char_allowance" value="0" min="0" max="5">Unknown characters allowed (does nothing in colocation mode).
+    </div>
     <p>
     <!-- number input field for minimum sentence length -->
-    <input type="number" id="min_length" value="10" min="2" max="40">Minimum sentence length (in characters)<br>
+    <input type="number" id="min_length" value="10" min="2" max="40">Minimum sentence length (in characters)
     <p>
     <button id="button">Loading datasets...</button>
     <p></p>
@@ -68,12 +92,32 @@
         };  
         request.send();
         
+        //set expert mode checkbox event
+        document.getElementById("expert_mode").addEventListener("click", function() {
+            var expert = document.getElementsByClassName("expert");
+            if (document.getElementById("expert_mode").checked){
+                for (var i = 0; i < expert.length; i++) {
+                    expert[i].style.display = "block";
+                }
+            } else {
+                for (var i = 0; i < expert.length; i++) {
+                    expert[i].style.display = "none";
+                }
+            }
+        });
 
         //set button event
         document.getElementById("button").addEventListener("click", function() {
             //get grouping value
             var colocation_mode = document.querySelector('input[name="grouping"]:checked').value === "colocation";
             var min_length = document.getElementById("min_length").value;
+            var unknown_char_allowance = parseInt(document.getElementById("unknown_char_allowance").value);
+
+            var expert_mode = document.getElementById("expert_mode").checked;
+            if (expert_mode===false){
+                unknown_char_allowance = 0;
+                colocation_mode=false;                
+            }
             var known_characters = document.getElementById("text").value;
             if (colocation_mode){
                 //strip all whitespace from known_characters
@@ -92,8 +136,32 @@
                 return self.indexOf(item) == pos;
             });
 
+            function markup(str){
+                //enclose runs of unknown characters in <span class="unknown">...</span>
+                var output = "";
+                var unknown_ar = "";
+                for (var i = 0; i < str.length; i++) {
+                    var c = str[i];
+                    if (known_characters.indexOf(c) == -1) {
+                        unknown_ar += c;
+                    } else {
+                        if (unknown_ar.length>0){
+                            output +=  "<span class='unknown'>" + unknown_ar + "</span>";
+                            unknown_ar = "";
+                        } 
+                        output += c;
+                    }                    
+                }
+                if (unknown_ar.length>0){
+                    output +=  "<span class='unknown'>" + unknown_ar + "</span>";
+                    unknown_ar = [];
+                } 
+                
+                return output;
+            }
             var results=[];
         
+            loop:
             for (var key in database) {
                 if (colocation_mode) {
                     //for each entry in database, if all known_characters are in sentence, add to results:
@@ -102,14 +170,19 @@
                     }
                 } else {
                     //for each entry in database, if all characters in its key are in known_characters, add to results
-                    var all_known = true;
+                    var unknown_ar=[];
                     for (var i = 0; i < key.length; i++) {
-                        if (known_characters.indexOf(key[i]) == -1) {
-                            all_known = false;
-                            break;
+                        var k = key[i];
+                        if (known_characters.indexOf(k) == -1) {
+                            if (unknown_ar.indexOf(k) == -1){
+                                unknown_ar.push(k);
+                                if (unknown_ar.length>unknown_char_allowance){
+                                    continue loop; 
+                                }
+                            }
                         }
                     }
-                    if (all_known) {
+                    if (unknown_ar.length === unknown_char_allowance) {
                         results.push(key);
                     }
                 }
@@ -141,7 +214,7 @@
             output = "<table><tr><th class='ctext'>Link</th><th class='chinese'>Chinese</th><th class='english'>English</th></tr>\n";
             //for each result, add a row to the table
             for (var i = 0; i < results.length; i++) {
-                output += "<tr><td class='ctext'> <a rel='noreferrer' href='https://ctext.org/dictionary.pl?if=en&id="+database[results[i]][0][1]+"'>◲</a> </td><td class='chinese'><span lang='zh-Hant'>" + results[i] + "</span></td><td class='english'>" + database[results[i]][0][0] + "</td></tr>\n";
+                output += "<tr><td class='ctext'> <a rel='noreferrer' href='https://ctext.org/dictionary.pl?if=en&id="+database[results[i]][0][1]+"'>◲</a> </td><td class='chinese'><span lang='zh-Hant'>" + markup(results[i]) + "</span></td><td class='english'>" + database[results[i]][0][0] + "</td></tr>\n";
             }
             output += "</table>";            
 
